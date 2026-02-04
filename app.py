@@ -227,26 +227,29 @@ def main():
     
     # Generate button
     col1, col2, col3 = st.columns([1, 1, 1])
+    
+    def start_generation():
+        """Callback to set generation state."""
+        st.session_state['generating'] = True
+        # Clear previous results
+        st.session_state.pop("posts", None)
+        st.session_state.pop("thesis", None)
+    
     with col2:
-        generate_clicked = st.button(
+        st.button(
             "⚡ Generate 10 Posts",
             use_container_width=True,
             disabled=not user_input,
+            on_click=start_generation
         )
     
     # Generation logic
-    if generate_clicked and user_input:
+    if st.session_state.get('generating', False) and user_input:
         # VISUAL TRACING: Immediate feedback container
         status = st.status("🚀 Startup: Initializing...", expanded=True)
         
         try:
-            status.write("✅ Button click registered.")
-            
-            # Clear previous results and errors
-            st.session_state.pop("posts", None)
-            st.session_state.pop("thesis", None)
-            st.session_state.pop("error", None)
-            st.session_state.pop("error_hint", None)
+            status.write("✅ Button click registered (State: generating=True)")
             
             # Parse input
             status.write("🔍 Analyzing input type...")
@@ -271,24 +274,29 @@ def main():
             st.session_state["thesis"] = thesis
             st.session_state["posts"] = posts
             
+            # Reset generation flag so we don't re-run on next interaction
+            st.session_state['generating'] = False
+            
             status.update(label="✅ Generation Complete!", state="complete", expanded=False)
                 
         except ValueError as e:
+            st.session_state['generating'] = False  # Reset on error
             status.update(label="❌ Configuration Error", state="error")
             st.error(f"❌ 🔑 Configuration Error: {str(e)}")
             st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
             with st.expander("🐛 Debug Details"):
                 import traceback
                 st.code(traceback.format_exc())
-            st.stop()
+            
         except Exception as e:
+            st.session_state['generating'] = False  # Reset on error
             status.update(label="❌ Fatal Error", state="error")
             st.error(f"❌ Generation failed: {str(e)}")
             st.error(f"**Error Type:** {type(e).__name__}")
             with st.expander("🐛 Full Error Traceback (click to expand)"):
                 import traceback
                 st.code(traceback.format_exc())
-            st.stop()
+
     
     # Show any stored errors (from previous runs)
     if "error" in st.session_state:
