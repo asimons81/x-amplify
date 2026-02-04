@@ -229,58 +229,42 @@ def main():
             del st.session_state["posts"]
         if "thesis" in st.session_state:
             del st.session_state["thesis"]
+        if "error" in st.session_state:
+            del st.session_state["error"]
         
-        error_occurred = False
-        
-        # Step 1: Parse input
-        status_container = st.empty()
-        status_container.info("🔮 Analyzing your input...")
-        
-        try:
-            input_type, content = smart_input_parser(user_input)
-            
-            if input_type == "url":
-                status_container.success(f"✅ Scraped {len(content)} characters from URL")
-            else:
-                status_container.success(f"✅ Analyzing {len(content)} characters of text...")
-        except Exception as e:
-            status_container.error(f"❌ Failed to parse input: {str(e)}")
-            error_occurred = True
-        
-        # Step 2: Initialize engine and generate
-        if not error_occurred:
-            progress_container = st.empty()
-            progress_container.info("🧠 Initializing AI engine...")
-            
+        # Use spinner for the entire generation process
+        with st.spinner("🔮 Analyzing your input..."):
             try:
-                engine = GeminiEngine()
-                progress_container.info("⚡ Generating 10 posts... (this takes 10-20 seconds)")
-                
-                thesis, posts = engine.generate_content(user_input, input_type, content)
-                
-                progress_container.success("✅ Generation complete!")
-                
-                # Store in session state
-                st.session_state["thesis"] = thesis
-                st.session_state["posts"] = posts
-                
-            except ValueError as e:
-                # API key issues
-                progress_container.error(f"🔑 Configuration Error: {str(e)}")
-                st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
-                error_occurred = True
+                input_type, content = smart_input_parser(user_input)
+                st.session_state["parsed"] = True
             except Exception as e:
-                progress_container.error(f"❌ Generation failed: {str(e)}")
-                error_occurred = True
+                st.session_state["error"] = f"Failed to parse input: {str(e)}"
+                st.rerun()
         
-        # Display thesis if we have it
-        if "thesis" in st.session_state:
-            st.markdown(f"""
-            <div class="thesis-box">
-                <div class="thesis-label">The Core Thesis</div>
-                <div class="thesis-text">"{st.session_state['thesis']}"</div>
-            </div>
-            """, unsafe_allow_html=True)
+        if "error" not in st.session_state:
+            with st.spinner("⚡ Generating 10 posts... (this takes 10-20 seconds)"):
+                try:
+                    engine = GeminiEngine()
+                    thesis, posts = engine.generate_content(user_input, input_type, content)
+                    
+                    # Store in session state
+                    st.session_state["thesis"] = thesis
+                    st.session_state["posts"] = posts
+                    st.rerun()
+                    
+                except ValueError as e:
+                    st.session_state["error"] = f"🔑 Configuration Error: {str(e)}"
+                    st.session_state["error_hint"] = "Make sure GEMINI_API_KEY is set in your Streamlit secrets."
+                    st.rerun()
+                except Exception as e:
+                    st.session_state["error"] = f"Generation failed: {str(e)}"
+                    st.rerun()
+    
+    # Show any errors
+    if "error" in st.session_state:
+        st.error(f"❌ {st.session_state['error']}")
+        if "error_hint" in st.session_state:
+            st.info(f"💡 **Tip:** {st.session_state['error_hint']}")
     
     # Display posts grid (also show thesis here if we have results but didn't just generate)
     if "posts" in st.session_state and st.session_state["posts"]:
