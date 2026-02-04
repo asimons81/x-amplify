@@ -227,10 +227,11 @@ def main():
         height=120,
         label_visibility="collapsed",
     )
+    normalized_input = user_input.strip()
     
     # Input type indicator
-    if user_input:
-        if is_valid_url(user_input):
+    if normalized_input:
+        if is_valid_url(normalized_input):
             st.info("🔗 URL detected. Will scrape and analyze content.", icon="🌐")
         else:
             st.info("📝 Text input detected. Will analyze directly.", icon="✍️")
@@ -254,12 +255,12 @@ def main():
         st.button(
             "⚡ Generate 10 Posts",
             use_container_width=True,
-            disabled=not user_input or not api_key,
+            disabled=not normalized_input or not api_key,
             on_click=start_generation
         )
     
     # Generation logic
-    if st.session_state.get('generating', False) and user_input:
+    if st.session_state.get('generating', False) and normalized_input:
         # VISUAL TRACING: Immediate feedback container
         status = st.status("🚀 Startup: Initializing...", expanded=True)
         
@@ -268,7 +269,7 @@ def main():
             
             # Parse input
             status.write("🔍 Analyzing input type...")
-            input_type, content = smart_input_parser(user_input)
+            input_type, content = smart_input_parser(normalized_input)
             status.write(f"✅ Input parsed as: {input_type}")
             
             # Generate posts
