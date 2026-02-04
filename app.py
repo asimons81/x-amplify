@@ -3,10 +3,13 @@ X-Amplify: The Stijn Method Content Generator
 Main Streamlit application.
 """
 
+from dotenv import load_dotenv
 import streamlit as st
 from logic.scraper import smart_input_parser, is_valid_url
 from logic.engine import GeminiEngine
 from config.prompts import FORMAT_DISPLAY_NAMES
+
+load_dotenv()
 
 # Page configuration
 st.set_page_config(
