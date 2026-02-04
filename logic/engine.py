@@ -47,7 +47,8 @@ class GeminiEngine:
         api_key = get_api_key()
         
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-3-pro-preview"
+        # Use Gemini 2.0 Flash - fast, capable, and available on free tier
+        self.model = "gemini-2.0-flash"
     
     def extract_thesis(self, content: str) -> str:
         """
