@@ -196,6 +196,15 @@ def render_post_card(format_key: str, content: str, col_index: int):
         st.success("Copied!", icon="✅")
 
 
+def log_debug(message: str) -> None:
+    """Append a debug message to session state with a short timestamp."""
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    entry = f"[{timestamp}] {message}"
+    st.session_state.setdefault("debug_logs", []).append(entry)
+
+
 def main():
     """Main application logic."""
     
@@ -214,6 +223,10 @@ def main():
             
         import sys
         st.text(f"Python: {sys.version.split()[0]}")
+
+        if st.session_state.get("debug_logs"):
+            st.markdown("**Recent Logs**")
+            st.code("\n".join(st.session_state["debug_logs"][-12:]))
     
     st.divider()
     
@@ -250,41 +263,54 @@ def main():
         # Clear previous results
         st.session_state.pop("posts", None)
         st.session_state.pop("thesis", None)
+        log_debug("Generate button clicked. Starting new run.")
     
     with col2:
-        st.button(
+        generate_clicked = st.button(
             "⚡ Generate 10 Posts",
             use_container_width=True,
             disabled=not normalized_input or not api_key,
-            on_click=start_generation
         )
+
+    if generate_clicked:
+        start_generation()
     
     # Generation logic
     if st.session_state.get('generating', False) and normalized_input:
         # VISUAL TRACING: Immediate feedback container
         status = st.status("🚀 Startup: Initializing...", expanded=True)
+        log_debug("Generation flow entered.")
         
         try:
             status.write("✅ Button click registered (State: generating=True)")
+            log_debug("Button click registered in session state.")
             
             # Parse input
             status.write("🔍 Analyzing input type...")
+            log_debug("Parsing input (URL or text).")
             input_type, content = smart_input_parser(normalized_input)
             status.write(f"✅ Input parsed as: {input_type}")
+            log_debug(f"Input parsed as {input_type}.")
             
             # Generate posts
             status.write("🧠 Initialize Gemini Engine...")
+            log_debug("Initializing Gemini engine.")
             engine = GeminiEngine()
             status.write(f"✅ Engine ready (Model: {engine.model})")
+            log_debug(f"Gemini engine ready: {engine.model}.")
             
             status.write("⚡ Calling Gemini API (Extracting Thesis)...")
+            log_debug("Calling Gemini API to extract thesis.")
             # We break down the call to show progress
             thesis = engine.extract_thesis(content)
             status.write("✅ Thesis extracted.")
+            log_debug("Thesis extracted successfully.")
             
             status.write("🎨 Generating 10 Formats (this takes ~10s)...")
+            log_debug("Generating all post formats.")
             posts = engine.generate_all_formats(thesis)
             status.write("✅ Content generated!")
+            log_debug("All post formats generated.")
             
             # Store in session state
             st.session_state["thesis"] = thesis
@@ -294,12 +320,14 @@ def main():
             st.session_state['generating'] = False
             
             status.update(label="✅ Generation Complete!", state="complete", expanded=False)
+            log_debug("Generation completed and stored in session state.")
                 
         except ValueError as e:
             st.session_state['generating'] = False  # Reset on error
             status.update(label="❌ Configuration Error", state="error")
             st.error(f"❌ 🔑 Configuration Error: {str(e)}")
             st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
+            log_debug(f"Configuration error: {str(e)}")
             with st.expander("🐛 Debug Details"):
                 import traceback
                 st.code(traceback.format_exc())
@@ -309,6 +337,7 @@ def main():
             status.update(label="❌ Fatal Error", state="error")
             st.error(f"❌ Generation failed: {str(e)}")
             st.error(f"**Error Type:** {type(e).__name__}")
+            log_debug(f"Fatal error: {type(e).__name__}: {str(e)}")
             with st.expander("🐛 Full Error Traceback (click to expand)"):
                 import traceback
                 st.code(traceback.format_exc())
