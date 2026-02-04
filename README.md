@@ -90,9 +90,9 @@ The easiest way to share this app is via [Streamlit Community Cloud](https://str
 3. Select your repository: `asimons81/x-amplify`.
 4. Branch: `main`.
 5. Main file path: `app.py`.
-6. **IMPORTANT**: Click "Advanced settings" -> "Secrets" and add your API key:
-   ```env
-   GEMINI_API_KEY=your_actual_api_key
+6. **IMPORTANT**: Click "Advanced settings" -> "Secrets" and add your API key in TOML format:
+   ```toml
+   GEMINI_API_KEY = "your_actual_api_key"
    ```
 7. Click **"Deploy"**.
 

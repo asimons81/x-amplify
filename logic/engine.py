@@ -18,6 +18,7 @@ from logic.validator import validate_all_posts, has_critical_issues
 
 # Load environment variables
 load_dotenv()
+import streamlit as st
 
 
 class GeminiEngine:
@@ -25,9 +26,16 @@ class GeminiEngine:
     
     def __init__(self):
         """Initialize the Gemini client."""
+        # Try environment variable first (local), then Streamlit secrets (cloud)
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+            try:
+                api_key = st.secrets["GEMINI_API_KEY"]
+            except Exception:
+                pass
+                
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment variables or Streamlit secrets")
         
         self.client = genai.Client(api_key=api_key)
         self.model = "gemini-3-pro-preview"
