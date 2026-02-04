@@ -190,8 +190,20 @@ def main():
     """Main application logic."""
     
     # Header
-    st.markdown("# ⚡ X-Amplify")
+    st.markdown("# ⚡ X-Amplify v1.1")
     st.markdown("*Transform any idea into 10 viral X posts using The Stijn Method*")
+    
+    # Debug Sidebar
+    with st.sidebar:
+        st.header("🛠️ Debug Info")
+        st.info(f"App Version: v1.1 (Debug Mode)")
+        if "thesis" in st.session_state:
+            st.success("State: Has Thesis")
+        else:
+            st.warning("State: No Thesis")
+            
+        import sys
+        st.text(f"Python: {sys.version.split()[0]}")
     
     st.divider()
     
@@ -224,31 +236,45 @@ def main():
     
     # Generation logic
     if generate_clicked and user_input:
-        # Clear previous results and errors
-        st.session_state.pop("posts", None)
-        st.session_state.pop("thesis", None)
-        st.session_state.pop("error", None)
-        st.session_state.pop("error_hint", None)
+        # VISUAL TRACING: Immediate feedback container
+        status = st.status("🚀 Startup: Initializing...", expanded=True)
         
-        # Parse input
         try:
-            with st.spinner("🔮 Analyzing your input..."):
-                input_type, content = smart_input_parser(user_input)
-        except Exception as e:
-            st.error(f"❌ Failed to parse input: {str(e)}")
-            st.stop()
-        
-        # Generate posts
-        try:
-            with st.spinner("⚡ Generating 10 posts... (this takes 10-20 seconds)"):
-                engine = GeminiEngine()
-                thesis, posts = engine.generate_content(user_input, input_type, content)
-                
-                # Store in session state
-                st.session_state["thesis"] = thesis
-                st.session_state["posts"] = posts
+            status.write("✅ Button click registered.")
+            
+            # Clear previous results and errors
+            st.session_state.pop("posts", None)
+            st.session_state.pop("thesis", None)
+            st.session_state.pop("error", None)
+            st.session_state.pop("error_hint", None)
+            
+            # Parse input
+            status.write("🔍 Analyzing input type...")
+            input_type, content = smart_input_parser(user_input)
+            status.write(f"✅ Input parsed as: {input_type}")
+            
+            # Generate posts
+            status.write("🧠 Initialize Gemini Engine...")
+            engine = GeminiEngine()
+            status.write(f"✅ Engine ready (Model: {engine.model})")
+            
+            status.write("⚡ Calling Gemini API (Extracting Thesis)...")
+            # We break down the call to show progress
+            thesis = engine.extract_thesis(content)
+            status.write("✅ Thesis extracted.")
+            
+            status.write("🎨 Generating 10 Formats (this takes ~10s)...")
+            posts = engine.generate_all_formats(thesis)
+            status.write("✅ Content generated!")
+            
+            # Store in session state
+            st.session_state["thesis"] = thesis
+            st.session_state["posts"] = posts
+            
+            status.update(label="✅ Generation Complete!", state="complete", expanded=False)
                 
         except ValueError as e:
+            status.update(label="❌ Configuration Error", state="error")
             st.error(f"❌ 🔑 Configuration Error: {str(e)}")
             st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
             with st.expander("🐛 Debug Details"):
@@ -256,6 +282,7 @@ def main():
                 st.code(traceback.format_exc())
             st.stop()
         except Exception as e:
+            status.update(label="❌ Fatal Error", state="error")
             st.error(f"❌ Generation failed: {str(e)}")
             st.error(f"**Error Type:** {type(e).__name__}")
             with st.expander("🐛 Full Error Traceback (click to expand)"):
