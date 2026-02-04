@@ -81,6 +81,21 @@ The app enforces strict style rules:
 - ✅ Sentence variance
 - ✅ Human cadence
 
+## 🚀 Deploy to Web (Free)
+
+The easiest way to share this app is via [Streamlit Community Cloud](https://streamlit.io/cloud):
+
+1. Go to **[share.streamlit.io](https://share.streamlit.io/)** and sign up/login with GitHub.
+2. Click **"New app"**.
+3. Select your repository: `asimons81/x-amplify`.
+4. Branch: `main`.
+5. Main file path: `app.py`.
+6. **IMPORTANT**: Click "Advanced settings" -> "Secrets" and add your API key:
+   ```env
+   GEMINI_API_KEY=your_actual_api_key
+   ```
+7. Click **"Deploy"**.
+
 ## 📄 License
 
 MIT License
