@@ -138,27 +138,49 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def get_char_count_badge(content: str) -> str:
+    """Return a styled badge showing character count vs X limit."""
+    char_count = len(content)
+    if char_count <= 280:
+        color = "#22c55e"  # green
+        status = "✓"
+    elif char_count <= 350:
+        color = "#eab308"  # yellow  
+        status = "⚠"
+    else:
+        color = "#ef4444"  # red
+        status = "✗"
+    
+    return f'<span style="font-size: 0.75rem; color: {color}; float: right;">{status} {char_count}/280</span>'
+
+
 def render_post_card(format_key: str, content: str, col_index: int):
     """Render a single post card with copy functionality."""
     display_name = FORMAT_DISPLAY_NAMES.get(format_key, format_key)
+    char_badge = get_char_count_badge(content)
     
     # Create unique key for this card's copy button
     copy_key = f"copy_{format_key}_{col_index}"
     
+    # Escape content for HTML display
+    import html
+    escaped_content = html.escape(content)
+    
     st.markdown(f"""
     <div class="post-card">
-        <div class="post-header">{display_name}</div>
-        <div class="post-content">{content}</div>
+        <div class="post-header">{display_name} {char_badge}</div>
+        <div class="post-content">{escaped_content}</div>
     </div>
     """, unsafe_allow_html=True)
     
     # Copy button using Streamlit's native approach
     if st.button("📋 Copy", key=copy_key, use_container_width=True):
         st.session_state[f"copied_{format_key}"] = True
-        # JavaScript injection for clipboard
+        # JavaScript injection for clipboard - properly escape the content
+        escaped_js = content.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$')
         st.components.v1.html(f"""
         <script>
-            navigator.clipboard.writeText(`{content.replace('`', '\\`')}`);
+            navigator.clipboard.writeText(`{escaped_js}`);
         </script>
         """, height=0)
         st.success("Copied!", icon="✅")
@@ -202,42 +224,78 @@ def main():
     
     # Generation logic
     if generate_clicked and user_input:
+        # Clear previous results
+        if "posts" in st.session_state:
+            del st.session_state["posts"]
+        if "thesis" in st.session_state:
+            del st.session_state["thesis"]
+        
+        error_occurred = False
+        
+        # Step 1: Parse input
+        status_container = st.empty()
+        status_container.info("🔮 Analyzing your input...")
+        
         try:
-            with st.spinner("🔮 Analyzing your input..."):
-                # Parse input
-                input_type, content = smart_input_parser(user_input)
-                
-                if input_type == "url":
-                    st.success(f"✅ Scraped {len(content)} characters from URL")
+            input_type, content = smart_input_parser(user_input)
             
-            with st.spinner("🧠 Extracting core thesis..."):
-                # Initialize engine
+            if input_type == "url":
+                status_container.success(f"✅ Scraped {len(content)} characters from URL")
+            else:
+                status_container.success(f"✅ Analyzing {len(content)} characters of text...")
+        except Exception as e:
+            status_container.error(f"❌ Failed to parse input: {str(e)}")
+            error_occurred = True
+        
+        # Step 2: Initialize engine and generate
+        if not error_occurred:
+            progress_container = st.empty()
+            progress_container.info("🧠 Initializing AI engine...")
+            
+            try:
                 engine = GeminiEngine()
+                progress_container.info("⚡ Generating 10 posts... (this takes 10-20 seconds)")
                 
-                # Generate content
                 thesis, posts = engine.generate_content(user_input, input_type, content)
-            
-            # Display thesis
+                
+                progress_container.success("✅ Generation complete!")
+                
+                # Store in session state
+                st.session_state["thesis"] = thesis
+                st.session_state["posts"] = posts
+                
+            except ValueError as e:
+                # API key issues
+                progress_container.error(f"🔑 Configuration Error: {str(e)}")
+                st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
+                error_occurred = True
+            except Exception as e:
+                progress_container.error(f"❌ Generation failed: {str(e)}")
+                error_occurred = True
+        
+        # Display thesis if we have it
+        if "thesis" in st.session_state:
             st.markdown(f"""
             <div class="thesis-box">
                 <div class="thesis-label">The Core Thesis</div>
-                <div class="thesis-text">"{thesis}"</div>
+                <div class="thesis-text">"{st.session_state['thesis']}"</div>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Store in session state
-            st.session_state["thesis"] = thesis
-            st.session_state["posts"] = posts
-            
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
-            st.stop()
     
-    # Display posts grid
+    # Display posts grid (also show thesis here if we have results but didn't just generate)
     if "posts" in st.session_state and st.session_state["posts"]:
+        # Show thesis if we have it (persisted from previous generation)
+        if "thesis" in st.session_state:
+            st.markdown(f"""
+            <div class="thesis-box">
+                <div class="thesis-label">The Core Thesis</div>
+                <div class="thesis-text">"{st.session_state['thesis']}"</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.divider()
         st.markdown("### 📱 Your 10 Posts")
-        st.caption("Click copy to grab any post for X.")
+        st.caption("Click copy to grab any post for X. Green = under 280 chars, Yellow = close, Red = over limit.")
         
         posts = st.session_state["posts"]
         
