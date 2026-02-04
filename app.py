@@ -6,7 +6,7 @@ Main Streamlit application.
 from dotenv import load_dotenv
 import streamlit as st
 from logic.scraper import smart_input_parser, is_valid_url
-from logic.engine import GeminiEngine
+from logic.engine import GeminiEngine, get_api_key
 from config.prompts import FORMAT_DISPLAY_NAMES
 
 load_dotenv()
@@ -156,6 +156,13 @@ def get_char_count_badge(content: str) -> str:
     
     return f'<span style="font-size: 0.75rem; color: {color}; float: right;">{status} {char_count}/280</span>'
 
+def safe_get_api_key() -> str | None:
+    """Return the API key if configured, otherwise None."""
+    try:
+        return get_api_key()
+    except ValueError:
+        return None
+
 
 def render_post_card(format_key: str, content: str, col_index: int):
     """Render a single post card with copy functionality."""
@@ -229,6 +236,11 @@ def main():
             st.info("📝 Text input detected. Will analyze directly.", icon="✍️")
     
     # Generate button
+    api_key = safe_get_api_key()
+    if not api_key:
+        st.warning(
+            "⚠️ GEMINI_API_KEY is missing. Add it in Streamlit secrets or as an environment variable to enable generation."
+        )
     col1, col2, col3 = st.columns([1, 1, 1])
     
     def start_generation():
@@ -242,7 +254,7 @@ def main():
         st.button(
             "⚡ Generate 10 Posts",
             use_container_width=True,
-            disabled=not user_input,
+            disabled=not user_input or not api_key,
             on_click=start_generation
         )
     
