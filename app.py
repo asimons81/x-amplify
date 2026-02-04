@@ -251,9 +251,16 @@ def main():
         except ValueError as e:
             st.error(f"❌ 🔑 Configuration Error: {str(e)}")
             st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
+            with st.expander("🐛 Debug Details"):
+                import traceback
+                st.code(traceback.format_exc())
             st.stop()
         except Exception as e:
             st.error(f"❌ Generation failed: {str(e)}")
+            st.error(f"**Error Type:** {type(e).__name__}")
+            with st.expander("🐛 Full Error Traceback (click to expand)"):
+                import traceback
+                st.code(traceback.format_exc())
             st.stop()
     
     # Show any stored errors (from previous runs)
