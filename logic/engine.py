@@ -7,7 +7,6 @@ import os
 import json
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
 
 from config.prompts import (
     THESIS_EXTRACTION_PROMPT,
@@ -16,9 +15,28 @@ from config.prompts import (
 )
 from logic.validator import validate_all_posts, has_critical_issues
 
-# Load environment variables
-load_dotenv()
-import streamlit as st
+
+def get_api_key() -> str:
+    """
+    Get GEMINI_API_KEY from Streamlit secrets (cloud) or environment (local).
+    """
+    # Try Streamlit secrets first (for Streamlit Cloud deployment)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and "GEMINI_API_KEY" in st.secrets:
+            return st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        pass
+    
+    # Fall back to environment variable (for local dev)
+    api_key = os.getenv("GEMINI_API_KEY")
+    if api_key:
+        return api_key
+    
+    raise ValueError(
+        "GEMINI_API_KEY not found. "
+        "Set it in Streamlit secrets (cloud) or as an environment variable (local)."
+    )
 
 
 class GeminiEngine:
@@ -26,16 +44,7 @@ class GeminiEngine:
     
     def __init__(self):
         """Initialize the Gemini client."""
-        # Try environment variable first (local), then Streamlit secrets (cloud)
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            try:
-                api_key = st.secrets["GEMINI_API_KEY"]
-            except Exception:
-                pass
-                
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables or Streamlit secrets")
+        api_key = get_api_key()
         
         self.client = genai.Client(api_key=api_key)
         self.model = "gemini-3-flash-preview"
