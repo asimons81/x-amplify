@@ -224,43 +224,39 @@ def main():
     
     # Generation logic
     if generate_clicked and user_input:
-        # Clear previous results
-        if "posts" in st.session_state:
-            del st.session_state["posts"]
-        if "thesis" in st.session_state:
-            del st.session_state["thesis"]
-        if "error" in st.session_state:
-            del st.session_state["error"]
+        # Clear previous results and errors
+        st.session_state.pop("posts", None)
+        st.session_state.pop("thesis", None)
+        st.session_state.pop("error", None)
+        st.session_state.pop("error_hint", None)
         
-        # Use spinner for the entire generation process
-        with st.spinner("🔮 Analyzing your input..."):
-            try:
+        # Parse input
+        try:
+            with st.spinner("🔮 Analyzing your input..."):
                 input_type, content = smart_input_parser(user_input)
-                st.session_state["parsed"] = True
-            except Exception as e:
-                st.session_state["error"] = f"Failed to parse input: {str(e)}"
-                st.rerun()
+        except Exception as e:
+            st.error(f"❌ Failed to parse input: {str(e)}")
+            st.stop()
         
-        if "error" not in st.session_state:
+        # Generate posts
+        try:
             with st.spinner("⚡ Generating 10 posts... (this takes 10-20 seconds)"):
-                try:
-                    engine = GeminiEngine()
-                    thesis, posts = engine.generate_content(user_input, input_type, content)
-                    
-                    # Store in session state
-                    st.session_state["thesis"] = thesis
-                    st.session_state["posts"] = posts
-                    st.rerun()
-                    
-                except ValueError as e:
-                    st.session_state["error"] = f"🔑 Configuration Error: {str(e)}"
-                    st.session_state["error_hint"] = "Make sure GEMINI_API_KEY is set in your Streamlit secrets."
-                    st.rerun()
-                except Exception as e:
-                    st.session_state["error"] = f"Generation failed: {str(e)}"
-                    st.rerun()
+                engine = GeminiEngine()
+                thesis, posts = engine.generate_content(user_input, input_type, content)
+                
+                # Store in session state
+                st.session_state["thesis"] = thesis
+                st.session_state["posts"] = posts
+                
+        except ValueError as e:
+            st.error(f"❌ 🔑 Configuration Error: {str(e)}")
+            st.info("💡 **Tip:** Make sure GEMINI_API_KEY is set in your Streamlit secrets.")
+            st.stop()
+        except Exception as e:
+            st.error(f"❌ Generation failed: {str(e)}")
+            st.stop()
     
-    # Show any errors
+    # Show any stored errors (from previous runs)
     if "error" in st.session_state:
         st.error(f"❌ {st.session_state['error']}")
         if "error_hint" in st.session_state:
