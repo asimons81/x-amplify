@@ -38,7 +38,7 @@ class GeminiEngine:
             raise ValueError("GEMINI_API_KEY not found in environment variables or Streamlit secrets")
         
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-3-pro-preview"
+        self.model = "gemini-3-flash-preview"
     
     def extract_thesis(self, content: str) -> str:
         """
